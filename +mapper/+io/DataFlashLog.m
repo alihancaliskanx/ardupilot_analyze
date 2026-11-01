@@ -128,7 +128,9 @@ classdef DataFlashLog < handle
                     len(mt) = double(d(p + 4));
                     fmt(mt).name = cstr(d(p + 5:p + 8));
                     fmt(mt).format = cstr(d(p + 9:p + 24));
-                    fmt(mt).cols = strsplit(cstr(d(p + 25:p + 88)), ',');
+                    % names that are MATLAB keywords (a column called 'function') become valid
+                    % ones here, so the instance field and the decoded struct use the same name
+                    fmt(mt).cols = matlab.lang.makeValidName(strsplit(cstr(d(p + 25:p + 88)), ','));
                     fmt(mt).len = len(mt);
                 else
                     cnt = cnt + 1;
