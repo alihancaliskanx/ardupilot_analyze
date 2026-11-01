@@ -7,6 +7,7 @@ classdef MessageTree < mapper.ui.Panel
         App
         Filter
         Tree
+        Synced = {}             % expressions whose boxes were ticked at the last sync
     end
 
     methods
@@ -17,7 +18,7 @@ classdef MessageTree < mapper.ui.Panel
             obj.Filter = uieditfield(g, 'text', 'Placeholder', 'Filter messages', ...
                 'ValueChangingFcn', @(~, e) obj.fill(e.Value));
             obj.Tree = uitree(g, 'checkbox', ...
-                'NodeExpandedFcn', @(~, e) obj.populate(e.Node), ...
+                'NodeExpandedFcn', @(~, e) obj.expanded(e.Node), ...
                 'CheckedNodesChangedFcn', @(~, ~) obj.checked());
         end
 
@@ -25,6 +26,15 @@ classdef MessageTree < mapper.ui.Panel
             obj.App = app;
             obj.Filter.Value = '';
             obj.fill('');
+        end
+
+        function setFilter(obj, text)
+            obj.Filter.Value = text;
+            obj.fill(text);
+        end
+
+        function onSelection(obj, ~)
+            obj.sync();
         end
     end
 
@@ -49,6 +59,14 @@ classdef MessageTree < mapper.ui.Panel
                     expand(n);
                 end
             end
+            obj.sync();
+        end
+
+        function expanded(obj, node)
+            % the event can name a node that a filter rebuild has just deleted
+            if ~isscalar(node) || ~isa(node, 'matlab.ui.container.TreeNode') || ~isvalid(node), return; end
+            obj.populate(node);
+            obj.sync();
         end
 
         function n = addBranch(~, parent, name, kind, fields)
@@ -77,7 +95,9 @@ classdef MessageTree < mapper.ui.Panel
         end
 
         function checked(obj)
-            % A checked type or instance that was never opened gets its children built and checked
+            % A checked type or instance that was never opened gets its children built and checked.
+            % Only the fields whose box changed are added to or removed from the plot, so series
+            % typed in the plot setup stay.
             nodes = obj.Tree.CheckedNodes;
             added = {};
             for k = 1:numel(nodes)
@@ -89,16 +109,32 @@ classdef MessageTree < mapper.ui.Panel
             end
             if ~isempty(added)
                 obj.Tree.CheckedNodes = unique([nodes; vertcat(added{:})]);
-                nodes = obj.Tree.CheckedNodes;
             end
-            sel = cell(0, 2);
+            ticked = obj.checkedExprs();
+            obj.App.changeExpressions(setdiff(ticked, obj.Synced, 'stable'), setdiff(obj.Synced, ticked));
+        end
+
+        function sync(obj)
+            % Ticks the boxes of the fields that are plotted
+            if isempty(obj.App), return; end
+            plotted = {obj.App.Selection.expr};
+            nodes = findall(obj.Tree, 'Type', 'uitreenode');
+            keep = false(size(nodes));
             for k = 1:numel(nodes)
                 d = nodes(k).NodeData;
-                if strcmp(d.kind, 'field')
-                    sel(end + 1, :) = {d.name, d.field}; %#ok<AGROW>
-                end
+                keep(k) = strcmp(d.kind, 'field') && any(strcmp([d.name '.' d.field], plotted));
             end
-            obj.App.setSelection(sel);
+            if any(keep), obj.Tree.CheckedNodes = nodes(keep); else, obj.Tree.CheckedNodes = []; end
+            obj.Synced = obj.checkedExprs();
+        end
+
+        function e = checkedExprs(obj)
+            nodes = obj.Tree.CheckedNodes;
+            e = {};
+            for k = 1:numel(nodes)
+                d = nodes(k).NodeData;
+                if strcmp(d.kind, 'field'), e{end + 1} = [d.name '.' d.field]; end %#ok<AGROW>
+            end
         end
     end
 end
