@@ -20,6 +20,7 @@ switch lower(name)
         T.palette = [T.series; hex({'#f5c2e7', '#74c7ec', '#eba0ac', '#b4befe', '#89dceb', ...
             '#f2cdcd', '#f5e0dc'})];
         T.modeText = hex('#11111b');        % labels on the pastel mode strip
+        T.ellipse = hex('#a6e3a1');         % error ellipses on the map
     case 'light'
         T.mode = 'light';
         T.background = [0.94 0.94 0.94];
@@ -33,6 +34,7 @@ switch lower(name)
         T.series = lines(7);
         T.palette = [T.series; 0.8*hsv(7)];
         T.modeText = [1 1 1];
+        T.ellipse = [0.30 0.60 0.35];
     otherwise
         error('ardupilot_analyze: unknown theme %s; use rainynight or light', name);
 end
