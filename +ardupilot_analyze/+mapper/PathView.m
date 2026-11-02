@@ -1,4 +1,4 @@
-classdef PathView < mapper.ui.Panel
+classdef PathView < ardupilot_analyze.ui.Panel
     % Horizontal path in its own window. The whole log is drawn grey and the time window on top of
     % it. The view is set once per source; after that zoom (scroll), pan (left-drag) and rotation
     % (right-drag, about the centre of the view) are the user's, so moving the time window never
@@ -32,7 +32,7 @@ classdef PathView < mapper.ui.Panel
     methods
         function obj = PathView(app)
             obj.App = app;
-            obj.Figure = uifigure('Name', 'mapper - path', 'Position', [1480 60 700 700], ...
+            obj.Figure = uifigure('Name', 'mapper', 'Position', [1480 60 700 700], ...
                 'CloseRequestFcn', @(~, ~) delete(obj));
             g = uigridlayout(obj.Figure, [2 1]);
             g.RowHeight = {26, '1x'};
@@ -48,7 +48,7 @@ classdef PathView < mapper.ui.Panel
             grid(ax, 'on'); box(ax, 'on');
             xlabel(ax, 'East (m)'); ylabel(ax, 'North (m)');
             obj.Axes = ax;
-            obj.Nav = mapper.ui.MouseNav(ax, 'xy');
+            obj.Nav = ardupilot_analyze.ui.MouseNav(ax, 'xy');
             obj.Nav.Home = @() obj.showAll();
             obj.Nav.HomeButton = 'middle';
             obj.Nav.RotateStart = @() obj.rotateStart();
@@ -57,7 +57,7 @@ classdef PathView < mapper.ui.Panel
             obj.Figure.WindowButtonMotionFcn = @(~, ~) obj.Nav.move();
             obj.Figure.WindowButtonUpFcn = @(~, ~) obj.Nav.up();
             obj.Figure.WindowScrollWheelFcn = @(~, e) obj.Nav.scroll(e);
-            mapper.ui.applyTheme(obj.Figure, app.Theme);
+            ardupilot_analyze.ui.applyTheme(obj.Figure, app.Theme);
         end
 
         function delete(obj)
@@ -70,7 +70,7 @@ classdef PathView < mapper.ui.Panel
             obj.Path = [];
             cla(obj.Axes);
             obj.Info.Text = '';
-            S = mapper.path.sources();
+            S = ardupilot_analyze.mapper.sources();
             obj.Choices = struct('name', {}, 'convert', {});
             items = {};
             for k = 1:numel(S)
@@ -114,7 +114,7 @@ classdef PathView < mapper.ui.Panel
                 set(obj.HStart, 'XData', p.east(j), 'YData', p.north(j));
                 set(obj.HEnd, 'XData', p.east(k), 'YData', p.north(k));
             end
-            obj.Info.Text = sprintf('%.1f s, path %.1f m', diff(app.Range), mapper.path.pathLength(p, i));
+            obj.Info.Text = sprintf('%.1f s, path %.1f m', diff(app.Range), ardupilot_analyze.mapper.pathLength(p, i));
             if ~isempty(obj.North), obj.Info.Text = [obj.Info.Text '   |   ' obj.North]; end
         end
 
@@ -127,7 +127,7 @@ classdef PathView < mapper.ui.Panel
 
     methods (Access = private)
         function press(obj, fig)
-            if ~mapper.ui.overLegend(obj.Axes, fig), obj.Nav.down(fig); end
+            if ~ardupilot_analyze.ui.overLegend(obj.Axes, fig), obj.Nav.down(fig); end
         end
 
         function rotateStart(obj)
@@ -137,7 +137,7 @@ classdef PathView < mapper.ui.Panel
         function loadSource(obj)
             c = obj.Choices(obj.Source.Value);
             p = c.convert(obj.App.Log.read(c.name));
-            obj.Path = mapper.path.decimate(p, obj.DRAW_STEP);
+            obj.Path = ardupilot_analyze.mapper.decimate(p, obj.DRAW_STEP);
             ax = obj.Axes;
             cla(ax);
             if isempty(obj.Path.t)
@@ -159,7 +159,7 @@ classdef PathView < mapper.ui.Panel
             obj.HCursor = plot(ax, NaN, NaN, 'o', 'Color', T.cursor, 'MarkerFaceColor', T.cursor, ...
                 'MarkerSize', 7, 'HandleVisibility', 'off', 'Parent', obj.Frame);
             legend(ax, [whole obj.HSel obj.HStart obj.HEnd], 'Location', 'northeast');
-            mapper.ui.applyTheme(obj.Figure, T);
+            ardupilot_analyze.ui.applyTheme(obj.Figure, T);
             axis(ax, 'equal');
             obj.showAll();
             obj.onRange(obj.App);

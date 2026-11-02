@@ -6,9 +6,9 @@ R = 6378137;
 ok = lat ~= 0 | lng ~= 0;
 t = t(ok); lat = lat(ok); lng = lng(ok);
 if isempty(t)
-    p = mapper.path.fromNed([], [], []);
+    p = ardupilot_analyze.mapper.fromNed([], [], []);
     return
 end
 lat0 = deg2rad(lat(1));
-p = mapper.path.fromNed(t, R*(deg2rad(lat) - lat0), R*cos(lat0)*(deg2rad(lng) - deg2rad(lng(1))));
+p = ardupilot_analyze.mapper.fromNed(t, R*(deg2rad(lat) - lat0), R*cos(lat0)*(deg2rad(lng) - deg2rad(lng(1))));
 end

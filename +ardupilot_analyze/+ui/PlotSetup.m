@@ -1,4 +1,4 @@
-classdef PlotSetup < mapper.ui.Panel
+classdef PlotSetup < ardupilot_analyze.ui.Panel
     % The plotted series, like "Plots Setup" on plot.ardupilot.org: one row per series with its
     % expression (editable), colour (palette or any colour) and a remove button, and
     % below them a field to add an expression and a clear. Saving them as a preset is in the

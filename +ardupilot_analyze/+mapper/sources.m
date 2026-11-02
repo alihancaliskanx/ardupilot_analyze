@@ -10,9 +10,9 @@ S = struct( ...
 end
 
 function p = ned(s)
-p = mapper.path.fromNed(s.t, s.PN, s.PE);
+p = ardupilot_analyze.mapper.fromNed(s.t, s.PN, s.PE);
 end
 
 function p = geo(s)
-p = mapper.path.fromGeo(s.t, s.Lat, s.Lng);
+p = ardupilot_analyze.mapper.fromGeo(s.t, s.Lat, s.Lng);
 end

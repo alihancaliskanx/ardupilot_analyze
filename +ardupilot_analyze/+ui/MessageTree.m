@@ -1,4 +1,4 @@
-classdef MessageTree < mapper.ui.Panel
+classdef MessageTree < ardupilot_analyze.ui.Panel
     % Message types of the log as a checkbox tree: type -> instance -> field. Checked fields are
     % the selection the time plot draws. Children are built when a node is first opened, since a
     % log has a few hundred types and thousands of fields.

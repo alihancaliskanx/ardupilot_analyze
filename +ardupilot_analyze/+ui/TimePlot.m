@@ -1,4 +1,4 @@
-classdef TimePlot < mapper.ui.Panel
+classdef TimePlot < ardupilot_analyze.ui.Panel
     % Plotted series against time, each with its own y-axis as on plot.ardupilot.org: a ruler in
     % the series colour left of the plot. A ruler is dragged by its tick labels (see AxisDrag):
     % the middle pans that series, the ends scale it, the wheel scales it about the pointer, a
@@ -51,7 +51,7 @@ classdef TimePlot < mapper.ui.Panel
             ax.YLim = [0 1];
             ax.YTick = 0:0.25:1;
             ax.YTickLabel = {};
-            obj.Nav = mapper.ui.MouseNav(ax, 'x');
+            obj.Nav = ardupilot_analyze.ui.MouseNav(ax, 'x');
             addlistener(ax, 'XLim', 'PostSet', @(~, ~) obj.limitsChanged());
             obj.Axes = ax;
             obj.layout();
@@ -86,7 +86,7 @@ classdef TimePlot < mapper.ui.Panel
                 obj.Lines(n) = plot(ax, t, nan(size(t)), '-', 'Color', c);
                 obj.Index(n) = k;
                 obj.Rulers(n) = obj.makeRuler(c);
-                obj.Drags{n} = mapper.ui.AxisDrag(obj.Rulers(n), obj.RULER - 4);
+                obj.Drags{n} = ardupilot_analyze.ui.AxisDrag(obj.Rulers(n), obj.RULER - 4);
                 obj.Drags{n}.Auto = @() obj.autoLimits(n);
                 obj.Drags{n}.Changed = @() obj.rescale(n);
                 obj.autoLimits(n);
@@ -117,7 +117,7 @@ classdef TimePlot < mapper.ui.Panel
         % Mouse, called by the App: rulers first, then the plot area
 
         function tf = down(obj, fig)
-            tf = mapper.ui.overLegend(obj.Axes, fig);
+            tf = ardupilot_analyze.ui.overLegend(obj.Axes, fig);
             if tf, return; end
             obj.RightHeld = strcmp(fig.SelectionType, 'alt');
             if strcmp(fig.SelectionType, 'extend') && obj.Nav.isOver()

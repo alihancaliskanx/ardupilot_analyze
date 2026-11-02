@@ -1,11 +1,11 @@
 function [t, y] = evaluate(log, expr)
 % Evaluates a plot expression over a log. Fields are written MSG.FIELD or MSG[i].FIELD and can be
 % combined with numbers, + - * / ^ (or ** as in Python) ( ) and the functions in
-% mapper.plot.functions, e.g.
+% ardupilot_analyze.plot.functions, e.g.
 %   'ATT.Yaw'   'XKF1[0].PN * 2'   'hypot(XKF1[0].VN, XKF1[0].VE)'   'ATT.DesYaw - ATT.Yaw'
 % The time base is that of the first field; the others are interpolated onto it.
 
-[ALLOWED, ALIAS] = mapper.plot.functions();
+[ALLOWED, ALIAS] = ardupilot_analyze.plot.functions();
 
 expr = strtrim(char(expr));
 [tokens, starts, ends] = regexp(expr, '([A-Z][A-Z0-9_]*(?:\[\d+\])?)\.([A-Za-z_]\w*)', 'tokens', 'start', 'end');

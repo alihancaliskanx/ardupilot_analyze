@@ -2,7 +2,7 @@ classdef DataFlashLog < handle
     % ArduPilot DataFlash (.BIN) log of any vehicle. The file is indexed once when opened;
     % a message type is decoded the first time it is read and kept in a cache.
     %
-    % log = mapper.io.DataFlashLog('00000027.BIN');
+    % log = ardupilot_analyze.io.DataFlashLog('00000027.BIN');
     % s = log.read('XKF1[0]');      % instance 0; s.t is time since boot in seconds
 
     properties (SetAccess = private)

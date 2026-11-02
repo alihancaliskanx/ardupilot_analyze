@@ -2,7 +2,7 @@ classdef App < handle
     % Viewer: message tree, time plot and range timeline in the main window, the path in a window of
     % its own; all tied to one time window.
     %
-    % app = mapper.ui.App(mapper.ui.themes('rainynight'));
+    % app = ardupilot_analyze.ui.App(ardupilot_analyze.ui.themes('rainynight'));
     % app.open('00000027.BIN');
     % app.setRange([1278 1564]);
     % app.setSelection({'XKF1[0]', 'PN'; 'XKF1[0]', 'PE'});   % or {'XKF1[0].PN'; 'ATT.Yaw * 2'}
@@ -15,8 +15,8 @@ classdef App < handle
         Selection = struct('expr', {}, 'color', {}, 'error', {})  % plotted series
         Figure
         PathView                    % path window, empty or deleted when closed
-        Theme                       % colours, see mapper.ui.themes
-        Debug = false               % print mouse events, see mapper.options
+        Theme                       % colours, see ardupilot_analyze.ui.themes
+        Debug = false               % print mouse events, see ardupilot_analyze.options
         Plot                        % panels, readable so scripts and tests can drive them
         Timeline
         Presets
@@ -41,10 +41,10 @@ classdef App < handle
 
     methods
         function app = App(T)
-            if nargin < 1, T = mapper.ui.themes('rainynight'); end
+            if nargin < 1, T = ardupilot_analyze.ui.themes('rainynight'); end
             app.Theme = T;
             app.build();
-            mapper.ui.applyTheme(app.Figure, T);
+            ardupilot_analyze.ui.applyTheme(app.Figure, T);
         end
 
         function openDialog(app)
@@ -55,17 +55,17 @@ classdef App < handle
         end
 
         function open(app, file)
-            dlg = uiprogressdlg(app.Figure, 'Title', 'mapper', 'Message', 'Reading log...', ...
+            dlg = uiprogressdlg(app.Figure, 'Title', 'ardupilot_analyze', 'Message', 'Reading log...', ...
                 'Indeterminate', 'on');
             cleanup = onCleanup(@() close(dlg));
-            app.Log = mapper.io.DataFlashLog(file);
+            app.Log = ardupilot_analyze.io.DataFlashLog(file);
             app.Span = app.Log.timeSpan();
             app.Range = app.Span;
             app.Selection = emptySelection();
             app.Series = containers.Map();
             [~, name, ext] = fileparts(file);
             app.LblFile.Text = sprintf('%s%s   %s', name, ext, app.Log.Firmware);
-            app.Figure.Name = ['mapper - ' name ext];
+            app.Figure.Name = ['ardupilot_analyze - ' name ext];
             app.EdStart.Limits = app.Span;
             app.EdEnd.Limits = app.Span;
             app.notifyPanels(@(p) p.onLoad(app));
@@ -75,7 +75,7 @@ classdef App < handle
         end
 
         function apply(app, opts)
-            % Applies mapper.options in a fixed order: open, filter, select, range, path source,
+            % Applies ardupilot_analyze.options in a fixed order: open, filter, select, range, path source,
             % snapshot, close. Scripted runs and tests go through here; with Close the windows are
             % closed on an error too, so a failed run leaves nothing open.
             app.Debug = opts.Debug;
@@ -174,20 +174,20 @@ classdef App < handle
             switch name
                 case 'expr', s = app.makeSeries(value, s.color);
                 case 'color', s.color = value;
-                otherwise, error('mapper: a series has no %s', name);
+                otherwise, error('ardupilot_analyze: a series has no %s', name);
             end
             app.Selection(k) = s;
             app.selectionChanged();
         end
 
         function savePreset(app, file)
-            % Writes the series as JSON that mapper('Config', file) reads back
+            % Writes the series as JSON that ardupilot_analyze('Config', file) reads back
             sel = rmfield(app.Selection, 'error');
             for k = 1:numel(sel)
                 sel(k).color = sprintf('#%02x%02x%02x', round(255*sel(k).color));
             end
             fid = fopen(file, 'w');
-            if fid < 0, error('mapper: cannot write %s', file); end
+            if fid < 0, error('ardupilot_analyze: cannot write %s', file); end
             fprintf(fid, '%s\n', jsonencode(struct('Select', sel), 'PrettyPrint', true));
             fclose(fid);
         end
@@ -233,9 +233,9 @@ classdef App < handle
 
         function restyle(app)
             % Re-colours what panels drew since the last call (lines, legends)
-            mapper.ui.applyTheme(app.Figure, app.Theme);
+            ardupilot_analyze.ui.applyTheme(app.Figure, app.Theme);
             if ~isempty(app.PathView) && isvalid(app.PathView)
-                mapper.ui.applyTheme(app.PathView.Figure, app.Theme);
+                ardupilot_analyze.ui.applyTheme(app.PathView.Figure, app.Theme);
             end
         end
 
@@ -249,7 +249,7 @@ classdef App < handle
                 figure(app.PathView.Figure);
                 return
             end
-            app.PathView = mapper.ui.PathView(app);
+            app.PathView = ardupilot_analyze.mapper.PathView(app);
             app.Panels{end + 1} = app.PathView;
             if ~isempty(app.Log)
                 app.PathView.onLoad(app);
@@ -265,7 +265,7 @@ classdef App < handle
             err = '';
             if ~isKey(app.Series, expr)
                 try
-                    [t, y] = mapper.plot.evaluate(app.Log, expr);
+                    [t, y] = ardupilot_analyze.plot.evaluate(app.Log, expr);
                     app.Series(expr) = struct('t', t, 'y', y);
                 catch e
                     err = e.message;
@@ -298,7 +298,7 @@ classdef App < handle
         end
 
         function build(app)
-            app.Figure = uifigure('Name', 'mapper', 'Position', [60 60 1400 900]);
+            app.Figure = uifigure('Name', 'ardupilot_analyze', 'Position', [60 60 1400 900]);
             root = uigridlayout(app.Figure, [2 1]);
             root.RowHeight = {30, '1x'};
 
@@ -316,7 +316,7 @@ classdef App < handle
             uilabel(bar, 'Text', 'End (s)', 'HorizontalAlignment', 'right');
             app.EdEnd = uieditfield(bar, 'numeric', 'ValueDisplayFormat', '%.1f', ...
                 'ValueChangedFcn', @(src, ~) app.setRange([app.Range(1) src.Value]));
-            uibutton(bar, 'Text', char(10005), 'Tooltip', 'Close mapper', ...
+            uibutton(bar, 'Text', char(10005), 'Tooltip', 'Close ardupilot_analyze', ...
                 'ButtonPushedFcn', @(~, ~) app.close());
 
             body = uigridlayout(root, [1 2]);
@@ -339,17 +339,17 @@ classdef App < handle
                 app.Pages(k).Layout.Row = 2;
                 app.Pages(k).Layout.Column = 1;
             end
-            app.Presets = mapper.ui.PresetBrowser(app.Pages(1), app);
+            app.Presets = ardupilot_analyze.ui.PresetBrowser(app.Pages(1), app);
             left = uigridlayout(app.Pages(2), [2 1]);
             left.RowHeight = {230, '1x'};
             left.Padding = [0 0 0 0];
-            app.Setup = mapper.ui.PlotSetup(left, app);
-            app.Tree = mapper.ui.MessageTree(left);
+            app.Setup = ardupilot_analyze.ui.PlotSetup(left, app);
+            app.Tree = ardupilot_analyze.ui.MessageTree(left);
             right = uigridlayout(body, [2 1]);
             right.RowHeight = {'1x', 90};
             right.Padding = [0 0 0 0];
-            app.Plot = mapper.ui.TimePlot(right);
-            app.Timeline = mapper.ui.RangeTimeline(right);
+            app.Plot = ardupilot_analyze.ui.TimePlot(right);
+            app.Timeline = ardupilot_analyze.ui.RangeTimeline(right);
             app.Panels = {app.Presets, app.Setup, app.Tree, app.Plot, app.Timeline};
             app.showPage('Plot');
 
@@ -366,7 +366,7 @@ classdef App < handle
             over = 'outside';
             if app.Plot.Nav.isOver(), over = 'time plot'; end
             if app.Timeline.isOver(), over = 'timeline'; end
-            fprintf('[mapper %s] %-6s %-10s over %s\n', char(datetime('now', 'Format', 'HH:mm:ss.SSS')), ...
+            fprintf('[ardupilot_analyze %s] %-6s %-10s over %s\n', char(datetime('now', 'Format', 'HH:mm:ss.SSS')), ...
                 event, detail, over);
         end
 

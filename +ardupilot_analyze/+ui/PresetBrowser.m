@@ -1,4 +1,4 @@
-classdef PresetBrowser < mapper.ui.Panel
+classdef PresetBrowser < ardupilot_analyze.ui.Panel
     % Presets tab, like the Presets list on plot.ardupilot.org, with the presets this log can draw:
     % Native presets are the MAVExplorer graphs, grouped by the part of their name before '/';
     % Custom presets are the ones saved here. Selecting one replaces the plotted series with it.
@@ -39,8 +39,8 @@ classdef PresetBrowser < mapper.ui.Panel
         function onLoad(obj, app)
             % Reads the presets again each time, so user presets saved meanwhile are listed
             obj.Ready = obj.Ready([]);
-            for p = mapper.plot.presets(app.PresetFolder)
-                items = mapper.plot.presetSeries(app.Log, p);
+            for p = ardupilot_analyze.plot.presets(app.PresetFolder)
+                items = ardupilot_analyze.plot.presetSeries(app.Log, p);
                 if isempty(items), continue; end
                 obj.Ready(end + 1) = struct('name', p.name, 'description', p.description, ...
                     'items', {items}, 'user', p.user);

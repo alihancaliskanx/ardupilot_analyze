@@ -2,7 +2,7 @@ function T = themes(name)
 % Colour sets for the viewer. 'rainynight' follows the Omarchy theme of that name
 % (~/.config/omarchy/themes/rainynight/colors.toml); 'light' is the plain MATLAB look.
 %
-% T = mapper.ui.themes('rainynight')
+% T = ardupilot_analyze.ui.themes('rainynight')
 
 switch lower(name)
     case 'rainynight'
@@ -34,7 +34,7 @@ switch lower(name)
         T.palette = [T.series; 0.8*hsv(7)];
         T.modeText = [1 1 1];
     otherwise
-        error('mapper: unknown theme %s; use rainynight or light', name);
+        error('ardupilot_analyze: unknown theme %s; use rainynight or light', name);
 end
 T.name = lower(name);
 end

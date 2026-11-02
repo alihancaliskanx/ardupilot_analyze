@@ -6,7 +6,7 @@ function P = presets(folder)
 %   alternatives  cell of cellstr; each is one way to draw the graph, for a different kind of log
 %   user          true for a preset saved by the user
 %
-% P = mapper.plot.presets(fullfile(mapperFolder, 'presets'))
+% P = ardupilot_analyze.plot.presets(fullfile(projectFolder, 'presets'))
 
 P = struct('name', {}, 'description', {}, 'alternatives', {}, 'user', {});
 for f = dir(fullfile(folder, '*.xml'))'

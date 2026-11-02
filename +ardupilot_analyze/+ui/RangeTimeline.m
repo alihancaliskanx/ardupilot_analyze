@@ -1,4 +1,4 @@
-classdef RangeTimeline < mapper.ui.Panel
+classdef RangeTimeline < ardupilot_analyze.ui.Panel
     % Whole-log timeline with the flight modes and a draggable window, like the range slider of
     % plot.ardupilot.org. Drag an edge to move it, drag inside to shift the window, drag elsewhere
     % to draw a new one; double-click selects the whole log. A right-press moves the nearer edge to
@@ -176,7 +176,7 @@ classdef RangeTimeline < mapper.ui.Panel
         function drawModes(obj, app)
             if ~app.Log.has('MODE'), return; end
             m = app.Log.read('MODE');
-            names = mapper.vehicle.modeNames(app.Log.Vehicle);
+            names = ardupilot_analyze.vehicle.modeNames(app.Log.Vehicle);
             edges = [m.t; app.Span(2)];
             cmap = app.Theme.series;
             b = obj.BAND;

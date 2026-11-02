@@ -1,8 +1,8 @@
 function items = presetSeries(log, preset)
 % The first alternative of a preset that this log can draw, as a cell of expressions, or {} when
-% none can: every MSG.FIELD must be in the log and every function known to mapper.plot.evaluate.
+% none can: every MSG.FIELD must be in the log and every function known to ardupilot_analyze.plot.evaluate.
 
-allowed = mapper.plot.functions();
+allowed = ardupilot_analyze.plot.functions();
 items = {};
 for a = preset.alternatives
     ok = true;
