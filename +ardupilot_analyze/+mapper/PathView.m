@@ -188,7 +188,7 @@ classdef PathView < ardupilot_analyze.ui.Panel
 
         function onCursor(obj, ~, t)
             if isempty(obj.Path) || isempty(obj.Path.t), return; end
-            [~, i] = min(abs(obj.Path.t - t));
+            i = ardupilot_analyze.plot.nearest(obj.Path.t, t);
             set(obj.HCursor, 'XData', obj.Path.east(i), 'YData', obj.Path.north(i));
             obj.CursorT = t;
             obj.drawEllipse(obj.App.Range);

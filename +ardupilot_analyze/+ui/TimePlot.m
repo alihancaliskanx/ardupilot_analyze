@@ -334,9 +334,8 @@ end
 
 function v = valueAt(d, t)
 % Value of the sample nearest to t
-if isempty(d.t), v = NaN; return; end
-[~, i] = min(abs(d.t - t));
-v = d.y(i);
+i = ardupilot_analyze.plot.nearest(d.t, t);
+if isempty(i), v = NaN; else, v = d.y(i); end
 end
 
 function s = num(v)

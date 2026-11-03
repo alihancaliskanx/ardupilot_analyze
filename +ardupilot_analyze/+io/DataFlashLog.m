@@ -18,6 +18,8 @@ classdef DataFlashLog < handle
         Typ                     % its type id
         InstanceField           % type name -> name of its instance field (unit '#' in FMTU)
         Cache
+        Types                   % result of types(); unique over Typ is slow on large logs
+                                % and the preset browser asks for it hundreds of times
     end
 
     methods
@@ -32,9 +34,12 @@ classdef DataFlashLog < handle
 
         function names = types(obj)
             % Message types that have at least one message in the log, sorted
-            ids = unique(obj.Typ);
-            names = {obj.Fmt(double(ids) + 1).name};
-            names = sort(names(~cellfun(@isempty, names)));
+            if isempty(obj.Types)
+                ids = unique(obj.Typ);
+                names = {obj.Fmt(double(ids) + 1).name};
+                obj.Types = sort(names(~cellfun(@isempty, names)));
+            end
+            names = obj.Types;
         end
 
         function tf = has(obj, type)

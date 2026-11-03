@@ -18,6 +18,7 @@ classdef RangeTimeline < ardupilot_analyze.ui.Panel
     properties (Constant, Access = private)
         EDGE_TOL = 0.01             % fraction of the log length that counts as on an edge
         BAND = [1.08 1.35]          % y range of the mode strip; the overview uses 0..1
+        OVERVIEW_BUCKETS = 1000     % about the strip's width in pixels
     end
 
     methods
@@ -50,6 +51,7 @@ classdef RangeTimeline < ardupilot_analyze.ui.Panel
             for k = 1:numel(app.Selection)
                 [t, v] = app.seriesData(k);
                 if isempty(t), continue; end
+                [t, v] = ardupilot_analyze.plot.envelope(t, v, obj.OVERVIEW_BUCKETS);
                 v = (v - min(v))/max(max(v) - min(v), eps);
                 h = plot(obj.Axes, t, v, 'Color', app.Theme.muted, 'Tag', 'overview', ...
                     'HitTest', 'off', 'PickableParts', 'none');
