@@ -33,7 +33,11 @@ for k = 1:numel(unique_names)
         t = s.t;
         v{k} = double(s.(tok{2}));
     else
-        v{k} = interp1(s.t, double(s.(tok{2})), t, 'linear', NaN);
+        % Types logged twice in one loop (RATE, ATSC) or read without an instance (XKF1 for
+        % all cores) repeat timestamps, which interp1 rejects; the first sample of each is kept
+        [ts, i] = unique(s.t);
+        y = double(s.(tok{2}));
+        v{k} = interp1(ts, y(i), t, 'linear', NaN);
     end
 end
 y = feval(str2func(['@(v) ' code]), v);
