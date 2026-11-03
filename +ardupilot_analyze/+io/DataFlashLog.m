@@ -20,6 +20,7 @@ classdef DataFlashLog < handle
         Cache
         Types                   % result of types(); unique over Typ is slow on large logs
                                 % and the preset browser asks for it hundreds of times
+        Instances               % type name -> result of instances(), for the same reason
     end
 
     methods
@@ -27,6 +28,7 @@ classdef DataFlashLog < handle
             obj.File = file;
             obj.Cache = containers.Map();
             obj.InstanceField = containers.Map();
+            obj.Instances = containers.Map();
             obj.index();
             obj.readInstanceFields();
             obj.detectVehicle();
@@ -65,9 +67,12 @@ classdef DataFlashLog < handle
                 names = {type};
                 return
             end
-            s = obj.read(type);
-            v = unique(s.(obj.InstanceField(type)));
-            names = arrayfun(@(k) sprintf('%s[%d]', type, k), v, 'UniformOutput', false)';
+            if ~isKey(obj.Instances, type)
+                s = obj.read(type);
+                v = unique(s.(obj.InstanceField(type)));
+                obj.Instances(type) = arrayfun(@(k) sprintf('%s[%d]', type, k), v, 'UniformOutput', false)';
+            end
+            names = obj.Instances(type);
         end
 
         function s = read(obj, name)
