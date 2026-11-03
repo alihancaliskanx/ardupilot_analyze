@@ -7,7 +7,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
     % time plot, or at the end of the time window while the pointer has not been there (or that
     % time is outside the window). It holds the chosen probability of a 2-D Gaussian, 95 % by
     % default. The covariance is the EKF's (see covariance) unless setCovariance gives another,
-    % e.g. a model's.
+    % e.g. a model's. Position fixes (see positionFixes) are marked where they put the vehicle,
+    % with a dashed line from where it was just before: the drift the fix removed.
 
     properties (SetAccess = private)
         Figure
@@ -34,10 +35,15 @@ classdef PathView < ardupilot_analyze.ui.Panel
         EllOn = true
         Conf = 0.95                 % probability inside an ellipse
         UiEll                       % ellipse controls: checkbox and confidence
+        Fixes = zeros(0, 1)         % times of the position fixes, s
+        HFix                        % fix markers, jump lines and labels
+        FixOn = true
     end
 
     properties (Constant, Access = private)
         DRAW_STEP = 0.1             % s between drawn samples
+        FIX_SETTLE = 0.3            % s after a fix at which its new position is read from the path
+        FIX_SAME = 0.5              % m: fixes closer than this are labelled together
     end
 
     methods
@@ -55,8 +61,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
             obj.Info = uilabel(bar, 'Text', '', 'HorizontalAlignment', 'right');
             uibutton(bar, 'Text', char(10005), 'Tooltip', 'Close the map', ...
                 'ButtonPushedFcn', @(~, ~) delete(obj));
-            ell = uigridlayout(g, [1 4]);
-            ell.ColumnWidth = {110, 75, 70, '1x'};
+            ell = uigridlayout(g, [1 5]);
+            ell.ColumnWidth = {110, 75, 70, 120, '1x'};
             ell.Padding = [0 0 0 0];
             obj.UiEll.On = uicheckbox(ell, 'Text', 'Error ellipses', 'Value', obj.EllOn, ...
                 'ValueChangedFcn', @(src, ~) obj.setEllipses(src.Value, obj.Conf));
@@ -64,6 +70,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
             obj.UiEll.Conf = uidropdown(ell, 'Items', {'68 %', '95 %', '99 %'}, ...
                 'ItemsData', [0.68 0.95 0.99], 'Value', obj.Conf, ...
                 'ValueChangedFcn', @(src, ~) obj.setEllipses(obj.EllOn, src.Value));
+            obj.UiEll.Fix = uicheckbox(ell, 'Text', 'Position fixes', 'Value', obj.FixOn, ...
+                'ValueChangedFcn', @(src, ~) obj.showFixes(src.Value));
             ax = uiaxes(g);
             grid(ax, 'on'); box(ax, 'on');
             xlabel(ax, 'East (m)'); ylabel(ax, 'North (m)');
@@ -131,6 +139,26 @@ classdef PathView < ardupilot_analyze.ui.Panel
             if ~isempty(obj.Path), obj.onRange(obj.App); end
         end
 
+        function showFixes(obj, on)
+            obj.FixOn = logical(on);
+            obj.UiEll.Fix.Value = obj.FixOn;
+            if ~isempty(obj.HFix), set(obj.HFix, 'Visible', matlab.lang.OnOffSwitchState(obj.FixOn)); end
+        end
+
+        function f = fixes(obj)
+            % Each fix as struct(t, east, north, jump): where it put the vehicle and how far it moved it
+            f = struct('t', {}, 'east', {}, 'north', {}, 'jump', {});
+            p = obj.Path;
+            if isempty(p) || isempty(p.t), return; end
+            for t = obj.Fixes(:)'
+                i = find(p.t <= t, 1, 'last');
+                j = find(p.t >= t + obj.FIX_SETTLE, 1);
+                if isempty(i) || isempty(j), continue; end
+                f(end + 1) = struct('t', t, 'east', p.east(j), 'north', p.north(j), ...
+                    'jump', hypot(p.east(j) - p.east(i), p.north(j) - p.north(i))); %#ok<AGROW>
+            end
+        end
+
         function setCovariance(obj, c)
             % Draws the ellipses from c = struct(t, varN, varE, covNE) instead of the source's own
             % covariance, until another source is chosen; [] goes back to having none
@@ -181,6 +209,7 @@ classdef PathView < ardupilot_analyze.ui.Panel
             p = c.convert(obj.App.Log.read(c.name));
             obj.Cov = ardupilot_analyze.mapper.covariance(obj.App.Log, c.name);
             obj.CursorT = [];
+            obj.Fixes = ardupilot_analyze.mapper.positionFixes(obj.App.Log);
             obj.Path = ardupilot_analyze.mapper.decimate(p, obj.DRAW_STEP);
             ax = obj.Axes;
             cla(ax);
@@ -204,11 +233,43 @@ classdef PathView < ardupilot_analyze.ui.Panel
                 'MarkerSize', 7, 'DisplayName', 'End', 'Parent', obj.Frame);
             obj.HCursor = plot(ax, NaN, NaN, 'o', 'Color', T.cursor, 'MarkerFaceColor', T.cursor, ...
                 'MarkerSize', 7, 'HandleVisibility', 'off', 'Parent', obj.Frame);
-            legend(ax, [whole obj.HSel obj.HStart obj.HEnd obj.HEll], 'Location', 'northeast');
+            obj.drawFixes(T);
+            items = [whole obj.HSel obj.HStart obj.HEnd obj.HEll];
+            if ~isempty(obj.HFix), items(end + 1) = obj.HFix(1); end
+            legend(ax, items, 'Location', 'northeast');
             ardupilot_analyze.ui.applyTheme(obj.Figure, T);
             axis(ax, 'equal');
             obj.showAll();
             obj.onRange(obj.App);
+        end
+
+        function drawFixes(obj, T)
+            obj.HFix = gobjects(0);
+            f = obj.fixes();
+            if isempty(f), return; end
+            c = T.series(5, :);
+            p = obj.Path;
+            lines = nan(3*numel(f), 2);
+            for k = 1:numel(f)
+                i = find(p.t <= f(k).t, 1, 'last');
+                lines(3*k - 2, :) = [p.east(i) p.north(i)];
+                lines(3*k - 1, :) = [f(k).east f(k).north];
+            end
+            obj.HFix = plot(obj.Axes, [f.east], [f.north], 'd', 'Color', c, 'MarkerFaceColor', c, ...
+                'MarkerSize', 8, 'DisplayName', 'Position fix', 'Parent', obj.Frame);
+            obj.HFix(2) = plot(obj.Axes, lines(:, 1), lines(:, 2), '--', 'Color', c, ...
+                'HandleVisibility', 'off', 'Parent', obj.Frame);
+            % fixes that put the vehicle on the same mark share one label, or the times overlap
+            done = false(size(f));
+            for k = 1:numel(f)
+                if done(k), continue; end
+                same = hypot([f.east] - f(k).east, [f.north] - f(k).north) < obj.FIX_SAME;
+                done = done | same;
+                label = ['  ' strjoin(compose('%.0f', [f(same).t]), ', ') ' s'];
+                obj.HFix(end + 1) = text(obj.Axes, f(k).east, f(k).north, label, 'Color', c, ...
+                    'FontSize', 8, 'VerticalAlignment', 'bottom', 'Parent', obj.Frame);
+            end
+            set(obj.HFix, 'Visible', matlab.lang.OnOffSwitchState(obj.FixOn));
         end
 
         function drawEllipse(obj, range)
