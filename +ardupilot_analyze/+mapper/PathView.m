@@ -29,8 +29,9 @@ classdef PathView < ardupilot_analyze.ui.Panel
         Start = eye(4)              % frame matrix when the current right-drag started
         North = ''                  % where north points while the map is turned
         App
-        Cov = []                    % struct(t, varN, varE, covNE), [] when there is none
+        Cov = []                    % struct(t, varN, varE, covNE[, sdYaw]), [] when there is none
         HEll                        % patch with the ellipse
+        HEllAxes                    % its semi-axes
         CursorT = []                % time under the pointer in the time plot, s
         EllOn = true
         Conf = 0.95                 % probability inside an ellipse
@@ -74,6 +75,7 @@ classdef PathView < ardupilot_analyze.ui.Panel
                 'ValueChangedFcn', @(src, ~) obj.setEllipses(obj.EllOn, src.Value));
             obj.UiEll.Fix = uicheckbox(ell, 'Text', 'Position fixes', 'Value', obj.FixOn, ...
                 'ValueChangedFcn', @(src, ~) obj.showFixes(src.Value));
+            obj.UiEll.Size = uilabel(ell, 'Text', '');
             ax = uiaxes(g);
             grid(ax, 'on'); box(ax, 'on');
             xlabel(ax, 'East (m)'); ylabel(ax, 'North (m)');
@@ -164,8 +166,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
         end
 
         function setCovariance(obj, c)
-            % Draws the ellipses from c = struct(t, varN, varE, covNE) instead of the source's own
-            % covariance, until another source is chosen; [] goes back to having none
+            % Draws the ellipses from c = struct(t, varN, varE, covNE[, sdYaw]) instead of the
+            % source's own covariance, until another source is chosen; [] goes back to having none
             obj.Cov = c;
             if ~isempty(obj.Path), obj.onRange(obj.App); end
         end
@@ -227,6 +229,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
             obj.Frame = hgtransform(ax);
             obj.HEll = patch(ax, 'Vertices', zeros(0, 2), 'Faces', zeros(0, 3), 'FaceColor', T.ellipse, ...
                 'FaceAlpha', 0.15, 'EdgeColor', T.ellipse, 'LineWidth', 1.5, 'Parent', obj.Frame);
+            obj.HEllAxes = plot(ax, NaN, NaN, '-', 'Color', T.ellipse, 'HandleVisibility', 'off', ...
+                'Parent', obj.Frame);
             whole = plot(ax, obj.Path.east, obj.Path.north, '-', 'Color', T.muted, 'DisplayName', 'Whole log', ...
                 'Parent', obj.Frame);
             obj.HSel = plot(ax, NaN, NaN, '-', 'Color', T.accent, 'LineWidth', 1.5, ...
@@ -285,18 +289,34 @@ classdef PathView < ardupilot_analyze.ui.Panel
 
         function drawEllipse(obj, range)
             show = obj.EllOn && ~isempty(obj.Cov);
-            obj.HEll.Visible = matlab.lang.OnOffSwitchState(show);
+            set([obj.HEll obj.HEllAxes], 'Visible', matlab.lang.OnOffSwitchState(show));
+            obj.UiEll.Size.Text = '';
             obj.HEll.DisplayName = sprintf('%g %% error ellipse', 100*obj.Conf);
             if ~show, return; end
             t = obj.CursorT;
             if isempty(t) || t < range(1) || t > range(2), t = range(2); end
-            [V, F] = obj.ellipsesAt(t);
+            [V, F, P, A] = obj.ellipsesAt(t);
             set(obj.HEll, 'Vertices', V, 'Faces', F);
+            set(obj.HEllAxes, 'XData', NaN, 'YData', NaN);
+            if isempty(A), return; end
+            set(obj.HEllAxes, 'XData', P(1) + [-A(1) A(1) NaN -A(3) A(3)], ...
+                'YData', P(2) + [-A(2) A(2) NaN -A(4) A(4)]);
+            obj.UiEll.Size.Text = sprintf('semi-axes %s%.2f m %s %s%.2f m', char(177), ...
+                hypot(A(1), A(2)), char(215), char(177), hypot(A(3), A(4)));
+            if isfield(obj.Cov, 'sdYaw')
+                sd = interp1(obj.Cov.t, obj.Cov.sdYaw, t, 'previous');
+                if isfinite(sd)
+                    % one-dimensional quantile, unlike the 2-D one of the ellipse
+                    obj.UiEll.Size.Text = sprintf('%s   heading %s%.1f%s', obj.UiEll.Size.Text, ...
+                        char(177), sqrt(2)*erfinv(obj.Conf)*sd, char(176));
+                end
+            end
         end
 
-        function [V, F] = ellipsesAt(obj, t)
-            % Ellipses at times t: position from the path, covariance held from its last sample
-            V = zeros(0, 2); F = zeros(0, 3);
+        function [V, F, P, A] = ellipsesAt(obj, t)
+            % Ellipses at times t: position from the path, covariance held from its last sample.
+            % P has the centres, A the semi-axes (see ellipses).
+            V = zeros(0, 2); F = zeros(0, 3); P = zeros(0, 2); A = zeros(0, 4);
             if ~obj.EllOn || isempty(obj.Cov) || isempty(obj.Path), return; end
             p = obj.Path;
             e = interp1(p.t, p.east, t);
@@ -306,7 +326,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
                 interp1(c.t, c.covNE, t, 'previous')]';
             ok = isfinite(e(:)) & isfinite(n(:)) & all(isfinite(C), 2);
             if ~any(ok), return; end
-            [V, F] = ardupilot_analyze.mapper.ellipses(e(ok), n(ok), C(ok, :), obj.Conf);
+            P = [e(ok) n(ok)];
+            [V, F, A] = ardupilot_analyze.mapper.ellipses(e(ok), n(ok), C(ok, :), obj.Conf);
         end
 
         function showAll(obj)
