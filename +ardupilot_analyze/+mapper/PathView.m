@@ -44,6 +44,8 @@ classdef PathView < ardupilot_analyze.ui.Panel
         DRAW_STEP = 0.1             % s between drawn samples
         FIX_SETTLE = 0.3            % s after a fix at which its new position is read from the path
         FIX_SAME = 0.5              % m: fixes closer than this are labelled together
+        FIX_SIGMA = 1.5             % m: position sigma right after a fix; the EKF assumes 0.5, but
+                                    % short loops in the logs show the vehicle is metres off the typed point
     end
 
     methods
@@ -146,8 +148,9 @@ classdef PathView < ardupilot_analyze.ui.Panel
         end
 
         function f = fixes(obj)
-            % Each fix as struct(t, east, north, jump): where it put the vehicle and how far it moved it
-            f = struct('t', {}, 'east', {}, 'north', {}, 'jump', {});
+            % Each fix as struct(t, east, north, eastBefore, northBefore, jump): where it put the
+            % vehicle, where the vehicle was just before, and how far it moved it
+            f = struct('t', {}, 'east', {}, 'north', {}, 'eastBefore', {}, 'northBefore', {}, 'jump', {});
             p = obj.Path;
             if isempty(p) || isempty(p.t), return; end
             for t = obj.Fixes(:)'
@@ -155,6 +158,7 @@ classdef PathView < ardupilot_analyze.ui.Panel
                 j = find(p.t >= t + obj.FIX_SETTLE, 1);
                 if isempty(i) || isempty(j), continue; end
                 f(end + 1) = struct('t', t, 'east', p.east(j), 'north', p.north(j), ...
+                    'eastBefore', p.east(i), 'northBefore', p.north(i), ...
                     'jump', hypot(p.east(j) - p.east(i), p.north(j) - p.north(i))); %#ok<AGROW>
             end
         end
@@ -259,13 +263,20 @@ classdef PathView < ardupilot_analyze.ui.Panel
                 'MarkerSize', 8, 'DisplayName', 'Position fix', 'Parent', obj.Frame);
             obj.HFix(2) = plot(obj.Axes, lines(:, 1), lines(:, 2), '--', 'Color', c, ...
                 'HandleVisibility', 'off', 'Parent', obj.Frame);
+            % each fix line also gives the leg that ends at it (see legs)
+            lg = ardupilot_analyze.mapper.legs(f, obj.FIX_SIGMA);
+            txt = compose('  %.0f s', [f.t]');
+            for k = find(isfinite([lg.dpsi]))
+                txt{k + 1} = sprintf('%s  %+.1f%s %s %.1f%s  x%.2f', txt{k + 1}, lg(k).dpsi, ...
+                    char(176), char(177), lg(k).dpsiSd, char(176), lg(k).scale);
+            end
             % fixes that put the vehicle on the same mark share one label, or the times overlap
             done = false(size(f));
             for k = 1:numel(f)
                 if done(k), continue; end
                 same = hypot([f.east] - f(k).east, [f.north] - f(k).north) < obj.FIX_SAME;
                 done = done | same;
-                label = ['  ' strjoin(compose('%.0f', [f(same).t]), ', ') ' s'];
+                label = txt(same);
                 obj.HFix(end + 1) = text(obj.Axes, f(k).east, f(k).north, label, 'Color', c, ...
                     'FontSize', 8, 'VerticalAlignment', 'bottom', 'Parent', obj.Frame);
             end
